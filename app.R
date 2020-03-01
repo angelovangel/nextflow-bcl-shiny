@@ -33,6 +33,8 @@
             useShinyalert(),
             shiny::uiOutput("mqc_report_button", inline = TRUE),
             shiny::uiOutput("nxf_report_button", inline = TRUE),
+            shiny::uiOutput("bcl_log_button", inline = TRUE),
+            
             shiny::div(id = "commands_pannel",
               shinyDirButton(id = "bcl_folder", 
                              label = "Select BCL run folder", 
@@ -68,9 +70,10 @@
   server <- function(input, output, session) {
     options(shiny.launch.browser = TRUE, shiny.error=recover)
     
-    # generate random hash for multiqc report temp file name
+    # generate random hashes for multiqc report temp file name
     mqc_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     nxf_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
+    bcllog_hash <- sprintf("%s_%s.txt", as.integer(Sys.time()), digest::digest(runif(1)) )
     
     # dir choose and file choose management --------------------------------------
     volumes <- c(Home = fs::path_home(), getVolumes()() )
@@ -167,13 +170,17 @@
                               sep = "")
           nxf_report <- paste(wd, "/results-bcl/nxf_workflow_report.html", 
                               sep = "")
+          bcl_log <- paste(wd, "/results-bcl/bcl_out.log", 
+                           sep = "")
            
           system2("cp", args = c(mqc_report, paste("www/", mqc_hash, sep = "")) )
           system2("cp", args = c(nxf_report, paste("www/", nxf_hash, sep = "")) )
+          system2("cp", args = c(bcl_log, paste("www/", bcllog_hash, sep = "")) )
           
           # OK alert
           shinyjs::hide(id = "commands_pannel")
           shinyjs::enable(id = "bclButton")
+          
           # render the new action buttons to show reports
           output$mqc_report_button <- renderUI({
             actionButton("mqc", label = "MultiQC report", 
@@ -189,6 +196,12 @@
             )
           })
           
+          output$bcl_log_button <- renderUI({
+            actionButton("bcl", label = "bcl2fastq log file", 
+                         icon = icon("th"), 
+                         onclick = sprintf("window.open('%s', '_blank')", bcllog_hash)
+            )
+          })
           # build js callback string for shinyalert
           js_cb_string <- sprintf("function(x) { if (x == true) {window.open('%s') ;} } ", mqc_hash)
           
