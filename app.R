@@ -112,13 +112,14 @@
     #-----------      
     # using processx to better control stdout
     observeEvent(input$run, {
-      if(is.integer(input$bcl_folder) | is.integer(input$samplesheet)) {
+      if(is.integer(input$bcl_folder)) {
         shinyjs::html(id = "stdout", 
                       "\nPlease make sure that Illumina run folder and sample sheet are selected, then press 'Run'...\n", 
                       add = TRUE)
       } else {
         # set run button color to red?
         shinyjs::disable(id = "commands_pannel")
+        shinyjs::disable(id = "bclButton")
         # change label during run
         shinyjs::html(id = "run", html = "Running... please wait")
         
@@ -172,7 +173,7 @@
           
           # OK alert
           shinyjs::hide(id = "commands_pannel")
-          shinyjs::show(id = "reset")
+          shinyjs::enable(id = "bclButton")
           # render the new action buttons to show reports
           output$mqc_report_button <- renderUI({
             actionButton("mqc", label = "MultiQC report", 
@@ -201,6 +202,7 @@
                    )
         } else {
           shinyjs::enable(id = "commands_pannel")
+          shinyjs::enable(id = "bclButton")
           shinyjs::html(id = "run", html = "Finished with errors, please reset")
           shinyjs::disable(id = "run")
           
@@ -219,6 +221,7 @@
     session$onSessionEnded(function() {
       # delete own mqc from www, it is meant to be temp only 
       system2("rm", args = c("-rf", paste("www/", mqc_hash, sep = "")) )
+      system2("rm", args = c("-rf", paste("www/", nxf_hash, sep = "")) )
       })
   
   #---
