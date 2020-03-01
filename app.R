@@ -57,8 +57,8 @@
             verbatimTextOutput("stdout") # this element is fixed height in the css file
             
     ),
-    tabPanel("bcl2fastq raw output", 
-             verbatimTextOutput("bcl2fastq_raw")
+    tabPanel("Help", 
+             includeMarkdown("help.md")
              )
     
   )
@@ -117,6 +117,9 @@
         # change label during run
         shinyjs::html(id = "run", html = "Running... please wait")
         
+      # define wd to runfolder
+      wd <- parseDirPath(volumes, input$bcl_folder)
+        
       #--------------------------------------------  
       # Dean Attali's solution
       # https://stackoverflow.com/a/30490698/8040734
@@ -126,10 +129,10 @@
                       args = c("run" ,
                                "angelovangel/nextflow-bcl", # pulls and puts it in ~/.nextflow
                                #fs::path_abs("../nextflow-bcl/main.nf"), # absolute path to avoid pulling from github
-                               "--runfolder", parseDirPath(volumes, input$bcl_folder), 
+                               "--runfolder", wd, 
                                "--samplesheet", sh_selected),
                       
-                      wd = parseDirPath(volumes, input$bcl_folder),
+                      wd = wd,
                       #echo_cmd = TRUE, echo = TRUE,
                       stdout_line_callback = function(line, proc) {message(line)}, 
                       #stdout_callback = cb_count,
@@ -145,15 +148,14 @@
       #-------------------------------
         if(p$status == 0) {
           
-          # clean scratch dir in case run finished ok
-          scratch_dir <- paste(parseDirPath(volumes, input$bcl_folder), "/work", sep = "")
-          system2("rm", args = c("-rf", scratch_dir) )
-          cat("deleted", scratch_dir)
+          # clean work dir in case run finished ok
+          work_dir <- paste(wd, "/work", sep = "")
+          system2("rm", args = c("-rf", work_dir) )
+          cat("deleted", work_dir)
           
           # copy mqc to www/ to be able to open it, also use hash to enable multiple concurrent users
           
-          mqc_report <- paste(parseDirPath(volumes, input$bcl_folder), 
-                           "/results-bcl/multiqc_report.html", # make sure the nextflow-bcl pipeline writes to "results-bcl"
+          mqc_report <- paste(wd, "/results-bcl/multiqc_report.html", # make sure the nextflow-bcl pipeline writes to "results-bcl"
                            sep = "")
            
           system2("cp", args = c(mqc_report, paste("www/", mqc_hash, sep = "")) )
