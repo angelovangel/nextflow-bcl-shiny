@@ -53,7 +53,23 @@
               actionButton("reset", "Reset", 
                          style = "color: #3498DB; font-weight: bold;",
                          onMouseOver = "this.style.color = 'orange' ",
-                         onMouseOut = "this.style.color = '#3498DB' ")
+                         onMouseOut = "this.style.color = '#3498DB' "),
+              # more options, like 
+              actionButton("more", "More options", class = "rightAlign"),
+              absolutePanel(top = 140, right = 20,
+                textInput(inputId = "report_title", 
+                          label = "Title of MultiQC report", 
+                          value = "InterOp and bcl2fastq summary"),
+                tags$hr(),
+                shinyFilesButton(id = "custom_mqc",
+                               label = "MultiQC config file", 
+                               title = "Select a custom MultiQC config file", 
+                               multiple = FALSE),
+                tags$hr(),
+                shinyDirButton(id = "results_dir", 
+                             label = "Results folder", 
+                             title = "Select a folder to save fastq results")
+              )
             ),
             
             verbatimTextOutput("stdout") # this element is fixed height in the css file
@@ -68,7 +84,18 @@
  #### server ####
   server <- function(input, output, session) {
     options(shiny.launch.browser = TRUE, shiny.error=recover)
+    #----
+    # observer for optional inputs
+    hide("custom_mqc")
+    hide("report_title")
+    hide("results_dir")
+    observeEvent(input$more, {
+      shinyjs::toggle("custom_mqc")
+      shinyjs::toggle("report_title")
+      shinyjs::toggle("results_dir")
+    })
     
+    #----
     # generate random hashes for multiqc report temp file name
     mqc_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     nxf_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
@@ -110,7 +137,15 @@
         
        }
     })
-
+    #----
+    # progress definition
+    progress <- shiny::Progress$new(min = 0, max = 1, style = "old")
+  
+    cb <- function(chunk, process) {
+      counts <- str_count(chunk, pattern = "bcl2fastq")
+      progress$inc(amount = counts/6)
+    }
+    
     #
     # real call to nextflow-bcl
     #-----------      
@@ -121,19 +156,21 @@
                       "\nPlease make sure that Illumina run folder and sample sheet are selected, then press 'Run'...\n", 
                       add = TRUE)
       } else {
-        # set run button color to red?
+        # set stuff when run starts
         shinyjs::disable(id = "commands_pannel")
         shinyjs::disable(id = "bclButton")
         # change label during run
-        shinyjs::html(id = "run", html = "Running... please wait")
+        shinyjs::html(id = "run", html = "Running...")
+        progress$set(message = "Running...  please wait", value = 0)
+        on.exit(progress$close())
         
-      # define wd to runfolder
-      wd <- parseDirPath(volumes, input$bcl_folder)
+        # define wd to runfolder
+        wd <- parseDirPath(volumes, input$bcl_folder)
         
-      #--------------------------------------------  
-      # Dean Attali's solution
-      # https://stackoverflow.com/a/30490698/8040734
-      withProgress(style = "old", message = "Running... please wait", {
+        #--------------------------------------------  
+        # Dean Attali's solution
+        # https://stackoverflow.com/a/30490698/8040734
+      
         withCallingHandlers({
           shinyjs::html(id = "stdout", "")
           p <- processx::run("nextflow", 
@@ -142,13 +179,14 @@
                                #fs::path_abs("../nextflow-bcl/main.nf"), # absolute path to avoid pulling from github
                                "--runfolder", wd, 
                                "--samplesheet", sh_selected, 
+                               "--title", input$report_title, 
                                "-with-report", paste(wd, "/results-bcl/nxf_workflow_report.html", sep = "")
                                ),
                       
                       wd = wd,
                       #echo_cmd = TRUE, echo = TRUE,
                       stdout_line_callback = function(line, proc) {message(line)}, 
-                      #stdout_callback = cb_count,
+                      stdout_callback = cb,
                       stderr_to_stdout = TRUE, 
                       error_on_status = FALSE
                       )
@@ -159,7 +197,6 @@
               # scroll the page to bottom with each message, 1e9 is just a big number
             }
         )
-      })
       #-------------------------------
         if(p$status == 0) {
           
@@ -242,6 +279,7 @@
       system2("rm", args = c("-rf", paste("www/", mqc_hash, sep = "")) )
       system2("rm", args = c("-rf", paste("www/", nxf_hash, sep = "")) )
       system2("rm", args = c("-rf", paste("www/", bcllog_hash, sep = "")) )
+      #stopApp() reset doesn't work if this is active - reload app stops it
       })
   
   #---

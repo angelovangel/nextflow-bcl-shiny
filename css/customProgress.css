@@ -8,7 +8,7 @@
 }
 
 .shiny-progress .bar {
-  background-color: #3498DB;
+  background-color: orange;
   opacity: 0.8;
   /*transition-duration: 250ms;*/
 }
@@ -16,7 +16,7 @@
 .shiny-progress .progress-text {
   position: absolute;
   /*top: 50%;*/
-  left: 50%; /* this and the line below center the progress bar*/
+  left: 50%; /* this and the line below center the progress text*/
   margin-left: -200px;
   width: 400px;
   background-color: transparent;
@@ -28,6 +28,7 @@
 .shiny-progress .progress-text .progress-message {
   padding: 0px 3px;
   font-weight: bold;
+  color: orange;
   font-size: 18px;
 }
 
