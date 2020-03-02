@@ -35,7 +35,7 @@
             shiny::uiOutput("nxf_report_button", inline = TRUE),
             shiny::uiOutput("bcl_log_button", inline = TRUE),
             
-            shiny::div(id = "commands_pannel",
+            shiny::div(id = "commands_pannel", 
               shinyDirButton(id = "bcl_folder", 
                              label = "Select BCL run folder", 
                              title = "Please select an Illumina run folder"),
@@ -54,7 +54,6 @@
                          style = "color: #3498DB; font-weight: bold;",
                          onMouseOver = "this.style.color = 'orange' ",
                          onMouseOut = "this.style.color = '#3498DB' ")
-              
             ),
             
             verbatimTextOutput("stdout") # this element is fixed height in the css file
@@ -96,7 +95,9 @@
         cat("No Illumina run folder selected\n")
       } else {
         if (is.integer(input$samplesheet)) { 
-          sh_selected <<- list.files(path = parseDirPath(volumes, input$bcl_folder), pattern = "SampleSheet.csv", full.names = TRUE)
+          sh_selected <<- list.files(path = 
+                                       parseDirPath(volumes, input$bcl_folder), pattern = 
+                                       "SampleSheet.csv", full.names = TRUE)
         } else {
           sh_selected <<- parseFilePaths(volumes, input$samplesheet)$datapath  
           }
@@ -132,6 +133,7 @@
       #--------------------------------------------  
       # Dean Attali's solution
       # https://stackoverflow.com/a/30490698/8040734
+      withProgress(style = "old", message = "Running... please wait", {
         withCallingHandlers({
           shinyjs::html(id = "stdout", "")
           p <- processx::run("nextflow", 
@@ -153,9 +155,11 @@
           }, 
             message = function(m) {
               shinyjs::html(id = "stdout", html = m$message, add = TRUE); 
-              runjs("document.getElementById('stdout').scrollTo(0,1e9);") # scroll the page to bottom with each message, 1e9 is just a big number
+              runjs("document.getElementById('stdout').scrollTo(0,1e9);") 
+              # scroll the page to bottom with each message, 1e9 is just a big number
             }
         )
+      })
       #-------------------------------
         if(p$status == 0) {
           
@@ -165,8 +169,8 @@
           cat("deleted", work_dir)
           
           # copy mqc to www/ to be able to open it, also use hash to enable multiple concurrent users
-          
-          mqc_report <- paste(wd, "/results-bcl/multiqc_report.html", # make sure the nextflow-bcl pipeline writes to "results-bcl"
+          # make sure the nextflow-bcl pipeline writes to "results-bcl"
+          mqc_report <- paste(wd, "/results-bcl/multiqc_report.html", 
                               sep = "")
           nxf_report <- paste(wd, "/results-bcl/nxf_workflow_report.html", 
                               sep = "")
@@ -202,6 +206,8 @@
                          onclick = sprintf("window.open('%s', '_blank')", bcllog_hash)
             )
           })
+          
+          
           # build js callback string for shinyalert
           js_cb_string <- sprintf("function(x) { if (x == true) {window.open('%s') ;} } ", mqc_hash)
           
@@ -235,6 +241,7 @@
       # delete own mqc from www, it is meant to be temp only 
       system2("rm", args = c("-rf", paste("www/", mqc_hash, sep = "")) )
       system2("rm", args = c("-rf", paste("www/", nxf_hash, sep = "")) )
+      system2("rm", args = c("-rf", paste("www/", bcllog_hash, sep = "")) )
       })
   
   #---

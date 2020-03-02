@@ -8,7 +8,7 @@
 }
 
 .shiny-progress .bar {
-  background-color: green;
+  background-color: #3498DB;
   opacity: 0.8;
   /*transition-duration: 250ms;*/
 }
@@ -28,13 +28,13 @@
 .shiny-progress .progress-text .progress-message {
   padding: 0px 3px;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .shiny-progress .progress-text .progress-detail {
   padding: 0px 3px;
   font-weight: bold;
-  color: green;
+  color: #3498DB;
   font-size: 14px;
 }
 
