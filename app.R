@@ -107,10 +107,13 @@
                    roots = volumes, 
                    session = session, 
                    restrictions = system.file(package = "base"))
-    shinyFileChoose(input, "samplesheet", 
+    shinyFileChoose(input, "samplesheet",
                     roots = volumes, 
                     session = session, 
                     filetypes = 'csv')
+    shinyDirChoose(input, "results_dir", 
+                   roots = volumes, 
+                   session = session)
     
     #-----------------------------------
     # show currently selected bcl folder and sample sheet file
@@ -121,18 +124,31 @@
       if (is.integer(input$bcl_folder)) {
         cat("No Illumina run folder selected\n")
       } else {
+        # define wd to runfolder
+        wd <<- parseDirPath(volumes, input$bcl_folder) # hard assigns in render? 
+        # auto-fill sample sheet
         if (is.integer(input$samplesheet)) { 
-          sh_selected <<- list.files(path = 
-                                       parseDirPath(volumes, input$bcl_folder), pattern = 
-                                       "SampleSheet.csv", full.names = TRUE)
+          sh_selected <<- list.files(path = wd, pattern = "SampleSheet.csv", full.names = TRUE)
         } else {
-          sh_selected <<- parseFilePaths(volumes, input$samplesheet)$datapath  
-          }
+          sh_selected <<- parseFilePaths(volumes, input$samplesheet)$datapath # parseFilePaths returns a df! 
+        }
+        
+        # set outdir
+        if(is.integer(input$results_dir)) {
+          outdir <<- paste(wd, "/results-bcl", sep = "")
+        } else {
+          outdir <<- parseDirPath(volumes, input$results_dir)
+        }
+        # and write current selection to stdout
         cat(
-          " Currently selected run folder:\n", 
-          parseDirPath(volumes, input$bcl_folder), "\n\n",
+          " Currently selected Illumina run folder:\n", 
+          wd, "\n\n",
+          "Currently selected pipeline output folder: \n", 
+          outdir, "\n\n",
           "Currently selected sample sheet:\n", 
-          sh_selected
+          sh_selected, "\n\n",
+          "--------------------------------\n",
+          "If there are selections for three above you can start the run. "
         )
         
        }
@@ -164,8 +180,6 @@
         progress$set(message = "Running...  please wait", value = 0)
         on.exit(progress$close())
         
-        # define wd to runfolder
-        wd <- parseDirPath(volumes, input$bcl_folder)
         
         #--------------------------------------------  
         # Dean Attali's solution
@@ -178,9 +192,10 @@
                                "angelovangel/nextflow-bcl", # pulls and puts it in ~/.nextflow
                                #fs::path_abs("../nextflow-bcl/main.nf"), # absolute path to avoid pulling from github
                                "--runfolder", wd, 
+                               "--outdir", outdir,
                                "--samplesheet", sh_selected, 
                                "--title", input$report_title, 
-                               "-with-report", paste(wd, "/results-bcl/nxf_workflow_report.html", sep = "")
+                               "-with-report", paste(outdir, "/nxf_workflow_report.html", sep = "")
                                ),
                       
                       wd = wd,
@@ -206,13 +221,10 @@
           cat("deleted", work_dir)
           
           # copy mqc to www/ to be able to open it, also use hash to enable multiple concurrent users
-          # make sure the nextflow-bcl pipeline writes to "results-bcl"
-          mqc_report <- paste(wd, "/results-bcl/multiqc_report.html", 
-                              sep = "")
-          nxf_report <- paste(wd, "/results-bcl/nxf_workflow_report.html", 
-                              sep = "")
-          bcl_log <- paste(wd, "/results-bcl/bcl_out.log", 
-                           sep = "")
+          # make sure the nextflow-bcl pipeline writes to outdir
+          mqc_report <- paste(outdir, "/multiqc_report.html", sep = "")
+          nxf_report <- paste(outdir, "/nxf_workflow_report.html", sep = "")
+          bcl_log <- paste(outdir, "/bcl_out.log", sep = "")
            
           system2("cp", args = c(mqc_report, paste("www/", mqc_hash, sep = "")) )
           system2("cp", args = c(nxf_report, paste("www/", nxf_hash, sep = "")) )
