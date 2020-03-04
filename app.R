@@ -10,7 +10,9 @@
  library(processx)
  library(stringr)
  library(digest)
+ library(yaml) # for generating custom multiqc_config.yaml from modal inputs
  
+ source("ncct_make_yaml.R") # I should use modules to handle modal inputs here...
 
  #### ui ####
  ui <- function(x) {
@@ -62,13 +64,15 @@
                           value = "InterOp and bcl2fastq summary"),
                 tags$hr(),
                 shinyFilesButton(id = "custom_mqc",
-                               label = "MultiQC config file", 
+                               label = "Custom MultiQC config file", 
                                title = "Select a custom MultiQC config file", 
                                multiple = FALSE),
                 tags$hr(),
                 shinyDirButton(id = "results_dir", 
-                             label = "Results folder", 
-                             title = "Select a folder to save fastq results")
+                             label = "Custom output folder", 
+                             title = "Select a folder to save fastq results"),
+                tags$hr(),
+                actionButton("ncct", "Enter NCCT project info")
               )
             ),
             
@@ -89,17 +93,20 @@
     hide("custom_mqc")
     hide("report_title")
     hide("results_dir")
+    hide("ncct")
     observeEvent(input$more, {
       shinyjs::toggle("custom_mqc")
       shinyjs::toggle("report_title")
       shinyjs::toggle("results_dir")
+      shinyjs::toggle("ncct")
     })
     
     #----
-    # generate random hashes for multiqc report temp file name
+    # generate random hashes for multiqc report temp file name etc.
     mqc_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     nxf_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     bcllog_hash <- sprintf("%s_%s.txt", as.integer(Sys.time()), digest::digest(runif(1)) )
+    
     
     # dir choose and file choose management --------------------------------------
     volumes <- c(Home = fs::path_home(), getVolumes()() )
@@ -116,6 +123,7 @@
                    session = session)
     
     #-----------------------------------
+    # SET WORK DIR, SAMPLESHEET, OUTDIR, 
     # show currently selected bcl folder and sample sheet file
     # in case no active selection is made, look in the bcl folder
     # else take the selected sample sheet
@@ -125,7 +133,7 @@
         cat("No Illumina run folder selected\n")
       } else {
         # define wd to runfolder
-        wd <<- parseDirPath(volumes, input$bcl_folder) # hard assigns in render? 
+        wd <<- parseDirPath(volumes, input$bcl_folder) # hard assigns required in render? 
         # auto-fill sample sheet
         if (is.integer(input$samplesheet)) { 
           sh_selected <<- list.files(path = wd, pattern = "SampleSheet.csv", full.names = TRUE)
@@ -148,11 +156,47 @@
           "Currently selected sample sheet:\n", 
           sh_selected, "\n\n",
           "--------------------------------\n",
-          "If there are selections for three above you can start the run. "
+          "If there are selections for all three above you can start the run. \n",
+          "The current mqc config reactive val is:\n", 
+          mqc_config$rv
         )
         
        }
     })
+    
+    #----
+    # strategy for ncct modal and multiqc config file handling:
+    # if input$ncct_ok is clicked, the modal inputs are fed into the ncct_make_yaml() function, which generates
+    # a multiqc_config.yml file and saves it using tempfile()
+    # initially, the reactive value mqc_config$rv is set to "", if input$ncct_ok then it is set to
+    # c("--multiqc_config", mqc_config_temp) and this reactive is given as param to the nxf pipeline
+    
+    # observer for ncct modal
+    source("ncct_modal.R", local = TRUE)$value
+    observeEvent(input$ncct, {
+      showModal(ncct_modal())
+    })
+    # generate yml file in case OK of modal was pressed
+    # the yml file is generated in the app exec env, with a hash name, and deleted after 
+    mqc_config <- reactiveValues(rv = "")
+    
+    observeEvent(input$ncct_ok, {
+      mqc_config_temp <- tempfile()
+      mqc_config$rv <- c("--multiqc_config", mqc_config_temp) 
+      
+      ncct_make_yaml(customer = input$customer, 
+                     project_id = input$project_id, 
+                     ncct_contact = input$ncct_contact, 
+                     project_type = input$project_type, 
+                     lib_prep = input$lib_prep, 
+                     indexing = input$indexing, 
+                     seq_setup = input$seq_setup, 
+                     ymlfile = mqc_config_temp)
+      
+      removeModal()
+    })
+    
+    
     #----
     # progress definition
     progress <- shiny::Progress$new(min = 0, max = 1, style = "old")
@@ -195,6 +239,7 @@
                                "--outdir", outdir,
                                "--samplesheet", sh_selected, 
                                "--title", input$report_title, 
+                               mqc_config$rv,  # here is the mqc_config trick - pass either "" or "--multiqc_config ..."
                                "-with-report", paste(outdir, "/nxf_workflow_report.html", sep = "")
                                ),
                       
