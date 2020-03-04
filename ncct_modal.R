@@ -1,21 +1,21 @@
 # function defining the ncct modal
 # 
 ncct_modal <- function() {
-  modalDialog(size = "l", 
+  modalDialog(size = "m", 
               footer = tagList(modalButton("Cancel"), actionButton("ncct_ok", "OK")),
-    textInput("customer", "Customer name", 
+    textInput("customer", "Customer name", width = '90%', 
               placeholder = "Enter name of PI"),
-    textInput("project_id", "Project ID", 
+    textInput("project_id", "Project ID", width = '90%', 
               placeholder = "Enter project ID"),
-    selectizeInput("ncct_contact", "Contact at NCCT", 
-                   choices = c("a", "b")
+    selectizeInput("ncct_contact", "Contact at NCCT", width = '90%', 
+                   choices = c("a", "b", "c")
                    ),
-    selectizeInput("project_type", "Type of project", 
+    selectizeInput("project_type", "Type of project", width = '90%', 
                    choices = c("DNA-seq", 
                                "RNA-seq", 
                                "Amplicon-seq")
                    ),
-    selectizeInput("lib_prep", "Library prep kit", 
+    selectizeInput("lib_prep", "Library prep kit", width = '90%', 
                    choices = c("Illumina Nextera DNA Flex", 
                                "Illumina TruSeq Nano",
                                "Zymo RiboFree Total RNA", 
@@ -23,7 +23,7 @@ ncct_modal <- function() {
                                "Custom 16S", 
                                "Custom amplicon")
                    ),
-    selectizeInput("indexing", "Index kit", 
+    selectizeInput("indexing", "Index kit", width = '90%', 
                    choices = c("a",
                                "b")
                    ),
@@ -32,8 +32,9 @@ ncct_modal <- function() {
     #                            "NextSeq 500", 
     #                            "iSeq")
     #                ),
-    selectizeInput("seq_setup", "Sequencing setup", 
-                   choices = c("MiSeq Reagent Nano Kit v2 (300 cycles)", 
+    selectizeInput("seq_setup", "Sequencing setup", width = '90%', 
+                   choices = c("iSeq 100 i1 Reagent (300 cycles)",
+                               "MiSeq Reagent Nano Kit v2 (300 cycles)", 
                                "MiSeq Reagent Micro Kit v2 (300 cycles)", 
                                "MiSeq Reagent Kit v2 (500 cycles)", 
                                "MiSeq Reagent Kit v2 (300 cycles)", 

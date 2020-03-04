@@ -41,11 +41,6 @@
               shinyDirButton(id = "bcl_folder", 
                              label = "Select BCL run folder", 
                              title = "Please select an Illumina run folder"),
-              shinyFilesButton(id = "samplesheet", 
-                               label = "Select sample sheet", 
-                               title = "Please select a sample sheet", 
-                               multiple = FALSE), 
-                               #class = "rightAlign"),
               
               actionButton("run", "Run nextflow-bcl pipeline", 
                          style = "color: #3498DB; font-weight: bold;", 
@@ -63,13 +58,13 @@
                           label = "Title of MultiQC report", 
                           value = "InterOp and bcl2fastq summary"),
                 tags$hr(),
-                shinyFilesButton(id = "custom_mqc",
-                               label = "Custom MultiQC config file", 
-                               title = "Select a custom MultiQC config file", 
-                               multiple = FALSE),
+                shinyFilesButton(id = "samplesheet", 
+                                 label = "Select sample sheet", 
+                                 title = "Please select a sample sheet", 
+                                 multiple = FALSE), 
                 tags$hr(),
                 shinyDirButton(id = "results_dir", 
-                             label = "Custom output folder", 
+                             label = "Custom results output folder", 
                              title = "Select a folder to save fastq results"),
                 tags$hr(),
                 actionButton("ncct", "Enter NCCT project info")
@@ -90,13 +85,13 @@
     options(shiny.launch.browser = TRUE, shiny.error=recover)
     #----
     # observer for optional inputs
-    hide("custom_mqc")
     hide("report_title")
+    hide("samplesheet")
     hide("results_dir")
     hide("ncct")
     observeEvent(input$more, {
-      shinyjs::toggle("custom_mqc")
       shinyjs::toggle("report_title")
+      shinyjs::toggle("samplesheet")
       shinyjs::toggle("results_dir")
       shinyjs::toggle("ncct")
     })
@@ -149,11 +144,11 @@
         }
         # and write current selection to stdout
         cat(
-          " Currently selected Illumina run folder:\n", 
+          " 1. Currently selected Illumina run folder:\n", 
           wd, "\n\n",
-          "Currently selected pipeline output folder: \n", 
+          "2. Currently selected pipeline output folder: \n", 
           outdir, "\n\n",
-          "Currently selected sample sheet:\n", 
+          "3. Currently selected sample sheet:\n", 
           sh_selected, "\n\n",
           "--------------------------------\n",
           "If there are selections for all three above you can start the run. \n",
@@ -183,7 +178,6 @@
     observeEvent(input$ncct_ok, {
       mqc_config_temp <- tempfile()
       mqc_config$rv <- c("--multiqc_config", mqc_config_temp) 
-      
       ncct_make_yaml(customer = input$customer, 
                      project_id = input$project_id, 
                      ncct_contact = input$ncct_contact, 
@@ -192,7 +186,7 @@
                      indexing = input$indexing, 
                      seq_setup = input$seq_setup, 
                      ymlfile = mqc_config_temp)
-      
+      shinyalert(text = "Project info saved!", type = "info", timer = 1500, showConfirmButton = FALSE)
       removeModal()
     })
     
