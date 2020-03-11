@@ -7,6 +7,7 @@
  library(shinyFiles)
  library(shinyjs)
  library(shinyalert)
+ library(shinyFeedback)
  library(processx)
  library(stringr)
  library(digest)
@@ -37,6 +38,7 @@
             includeCSS("css/customProgress.css"),
             useShinyjs(),
             useShinyalert(),
+            useShinyFeedback(),
             shiny::uiOutput("mqc_report_button", inline = TRUE),
             shiny::uiOutput("nxf_report_button", inline = TRUE),
             shiny::uiOutput("bcl_log_button", inline = TRUE),
@@ -88,6 +90,7 @@
  }
  #### server ####
   server <- function(input, output, session) {
+    options(shiny.launch.browser = TRUE, shiny.error=recover)
     
     # update user counts at each server call
     isolate({
@@ -99,7 +102,7 @@
       loggit("INFO", log_msg = "current_users", log_detail = paste(users$count))
     })
     
-    options(shiny.launch.browser = TRUE, shiny.error=recover)
+    
     #----
     # observer for optional inputs
     hide("report_title")
@@ -113,6 +116,13 @@
       shinyjs::toggle("results_dir")
       shinyjs::toggle("ncct")
       shinyjs::toggle("tower")
+    })
+    #----
+    # observers for shinyFeedback
+    observeEvent(input$report_title, {
+      feedbackWarning(inputId = "report_title", 
+                      condition = nchar(input$report_title) <= 3, 
+                      text = "too short")
     })
     
     #----
