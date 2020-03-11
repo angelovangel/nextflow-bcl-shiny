@@ -62,6 +62,8 @@
                           label = "Title of MultiQC report", 
                           value = "InterOp and bcl2fastq summary"),
                 tags$hr(),
+                checkboxInput("tower", "Use Nextflow Tower to monitor run", value = FALSE),
+                tags$hr(),
                 shinyFilesButton(id = "samplesheet", 
                                  label = "Select sample sheet", 
                                  title = "Please select a sample sheet", 
@@ -104,11 +106,13 @@
     hide("samplesheet")
     hide("results_dir")
     hide("ncct")
+    hide("tower")
     observeEvent(input$more, {
       shinyjs::toggle("report_title")
       shinyjs::toggle("samplesheet")
       shinyjs::toggle("results_dir")
       shinyjs::toggle("ncct")
+      shinyjs::toggle("tower")
     })
     
     #----
@@ -117,6 +121,9 @@
     nxf_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     bcllog_hash <- sprintf("%s_%s.txt", as.integer(Sys.time()), digest::digest(runif(1)) )
     
+    # reactives for optional nxf params
+    # set TOWER_ACCESS_TOKEN in ~/.Renviron
+    optional_params <- reactiveValues(mqc = "", tower = "")
     
     # dir choose and file choose management --------------------------------------
     volumes <- c(Home = fs::path_home(), getVolumes()() )
@@ -157,6 +164,14 @@
         } else {
           outdir <<- parseDirPath(volumes, input$results_dir)
         }
+        
+        # set tower optional
+        if(input$tower) {
+          optional_params$tower <- "-with-tower"
+        } else {
+          optional_params$tower <- ""
+        }
+        
         # and write current selection to stdout
         cat(
           " 1. Currently selected Illumina run folder:\n", 
@@ -168,7 +183,17 @@
           "--------------------------------\n",
           "If there are selections for all three above you can start the run. \n",
           "The current mqc config reactive val is:\n", 
-          mqc_config$rv
+          optional_params$mqc, "\n\n",
+          
+          "--------------------------------\n",
+          "Nextflow command to be executed:\n",
+          "nextflow run angelovangel/nextflow-bcl", "\\ \n",
+          "--runfolder", wd, "\\ \n",
+          "--outdir", outdir, "\\ \n",
+          "--samplesheet", sh_selected, "\\ \n",
+          "--title", input$report_title, "\\ \n",
+          "-with-report", paste(outdir, "/nxf_workflow_report.html", sep = ""), "\\ \n",
+          optional_params$tower, optional_params$mqc, "\n"
         )
         
        }
@@ -186,13 +211,12 @@
     observeEvent(input$ncct, {
       showModal(ncct_modal())
     })
-    # generate yml file in case OK of modal was pressed
-    # the yml file is generated in the app exec env, with a hash name, and deleted after 
-    mqc_config <- reactiveValues(rv = "")
     
+    # generate yml file in case OK of modal was pressed
+    # the yml file is generated in the app exec env, using temp()
     observeEvent(input$ncct_ok, {
       mqc_config_temp <- tempfile()
-      mqc_config$rv <- c("--multiqc_config", mqc_config_temp) 
+      optional_params$mqc <- c("--multiqc_config", mqc_config_temp) 
       ncct_make_yaml(customer = input$customer, 
                      project_id = input$project_id, 
                      ncct_contact = input$ncct_contact, 
@@ -248,7 +272,8 @@
                                "--outdir", outdir,
                                "--samplesheet", sh_selected, 
                                "--title", input$report_title, 
-                               mqc_config$rv,  # here is the mqc_config trick - pass either "" or "--multiqc_config ..."
+                               optional_params$mqc,  # here is the mqc_config trick - pass either "" or "--multiqc_config ..."
+                               optional_params$tower, 
                                "-with-report", paste(outdir, "/nxf_workflow_report.html", sep = "")
                                ),
                       
