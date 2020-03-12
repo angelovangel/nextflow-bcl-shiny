@@ -12,11 +12,10 @@
  library(stringr)
  library(digest)
  library(yaml) # for generating custom multiqc_config.yaml from modal inputs
- library(loggit)
  
  source("ncct_make_yaml.R") # I should use modules to handle modal inputs here...
  
- loggit::setLogFile(paste0(getwd(), "/loggit.json"))
+ # setup monitoring of user counts
  users <- reactiveValues(count = 0)
 
  #### ui ####
@@ -99,7 +98,7 @@
     
     # observe changes in users$count and write to log
     observe({
-      loggit("INFO", log_msg = "current_users", log_detail = paste(users$count))
+      writeLines(as.character(users$count), con = "userlog")
     })
     
     
@@ -121,7 +120,7 @@
     # observers for shinyFeedback
     observeEvent(input$report_title, {
       feedbackWarning(inputId = "report_title", 
-                      condition = nchar(input$report_title) <= 3, 
+                      condition = nchar(input$report_title) <= 5, 
                       text = "too short")
     })
     
@@ -379,9 +378,9 @@
       #user management
       isolate({
         users$count <- users$count - 1
+        writeLines(as.character(users$count), con = "userlog")
       })
       
-      loggit::loggit(log_lvl = "INFO", "app_stop", log_detail = "0")
     
       # delete own mqc from www, it is meant to be temp only 
       system2("rm", args = c("-rf", paste("www/", mqc_hash, sep = "")) )
