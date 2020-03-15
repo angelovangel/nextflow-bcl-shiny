@@ -1,52 +1,39 @@
 # function defining the ncct modal
-# 
-ncct_modal <- function() {
+# 'entries' is a  list which is obtained from a yaml file, maintained at the gist below 
+# !!! reads the choices from
+# https://gist.github.com/angelovangel/d079296b184eba5b124c1d434276fa28
+# each time it is called
+
+require(yaml)
+
+ncct_modal <- function(entries) {
+  
   modalDialog(size = "m", 
               footer = tagList(modalButton("Cancel"), actionButton("ncct_ok", "OK")),
-    textInput("customer", "Customer name", width = '90%', 
-              placeholder = "Enter name of PI"),
-    textInput("project_id", "Project ID", width = '90%', 
-              placeholder = "Enter project ID"),
-    selectizeInput("ncct_contact", "Contact at NCCT", width = '90%', 
-                   choices = c("a", "b", "c")
-                   ),
-    selectizeInput("project_type", "Type of project", width = '90%', 
-                   choices = c("DNA-seq", 
-                               "RNA-seq", 
-                               "Amplicon-seq")
-                   ),
-    selectizeInput("lib_prep", "Library prep kit", width = '90%', 
-                   choices = c("Illumina Nextera DNA Flex", 
-                               "Illumina TruSeq Nano",
-                               "Zymo RiboFree Total RNA", 
-                               "Zymo Quick-16S", 
-                               "Custom 16S", 
-                               "Custom amplicon")
-                   ),
-    selectizeInput("indexing", "Index kit", width = '90%', 
-                   choices = c("a",
-                               "b")
-                   ),
-    # selectizeInput("seq_platform", "Sequencing platform", 
-    #                choices = c("MiSeq", 
-    #                            "NextSeq 500", 
-    #                            "iSeq")
-    #                ),
-    selectizeInput("seq_setup", "Sequencing setup", width = '90%', 
-                   choices = c("iSeq 100 i1 Reagent (300 cycles)",
-                               "MiSeq Reagent Nano Kit v2 (300 cycles)", 
-                               "MiSeq Reagent Micro Kit v2 (300 cycles)", 
-                               "MiSeq Reagent Kit v2 (500 cycles)", 
-                               "MiSeq Reagent Kit v2 (300 cycles)", 
-                               "MiSeq Reagent Kit v2 (50 cycles)", 
-                               "MiSeq Reagent Kit v3 (600 cycles)", 
-                               "MiSeq Reagent Kit v3 (150 cycles)", 
-                               "NextSeq 500 Mid Output Kit v2 (150 cycles)", 
-                               "NextSeq 500 Mid Output Kit v2 (300 cycles)", 
-                               "NextSeq 500 High Output Kit v2 (75 cycles)", 
-                               "NextSeq 500 High Output Kit v2 (150 cycles)", 
-                               "NextSeq 500 High Output Kit v2 (300 cycles)")
-                   )
-    
+              textInput("customer", "Customer name", width = '90%', 
+                        placeholder = "Enter name of PI"),
+              textInput("project_id", "Project ID", width = '90%', 
+                        placeholder = "Enter project ID"),
+              
+              # all selectize inputs get their choices from the gist yaml
+              selectizeInput("ncct_contact", "Contact at NCCT", width = '90%', 
+                             choices = entries$ncct_contact
+              ),
+              
+              selectizeInput("project_type", "Type of project", width = '90%', 
+                             choices = entries$project_type
+              ),
+              
+              selectizeInput("lib_prep", "Library prep kit", width = '90%', 
+                             choices = entries$lib_prep
+              ),
+              
+              selectizeInput("indexing", "Index kit", width = '90%', 
+                             choices = entries$indexing
+              ),
+              
+              selectizeInput("seq_setup", "Sequencing setup", width = '90%', 
+                             choices = entries$seq_setup
+              )
   )
 }

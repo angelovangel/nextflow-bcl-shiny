@@ -14,6 +14,7 @@
  library(yaml) # for generating custom multiqc_config.yaml from modal inputs
  
  source("ncct_make_yaml.R") # I should use modules to handle modal inputs here...
+ source("ncct_modal.R", local = TRUE)$value
  
  # setup monitoring of user counts
  users <- reactiveValues(count = 0)
@@ -34,7 +35,7 @@
     
     tabPanel("nextflow-bcl pipeline",
             # attempts to use external progress bar
-            includeCSS("css/customProgress.css"),
+            includeCSS("css/custom.css"),
             useShinyjs(),
             useShinyalert(),
             useShinyFeedback(),
@@ -63,8 +64,6 @@
                           label = "Title of MultiQC report", 
                           value = "InterOp and bcl2fastq summary"),
                 tags$hr(),
-                checkboxInput("tower", "Use Nextflow Tower to monitor run", value = FALSE),
-                tags$hr(),
                 shinyFilesButton(id = "samplesheet", 
                                  label = "Select sample sheet", 
                                  title = "Please select a sample sheet", 
@@ -74,7 +73,10 @@
                              label = "Custom results output folder", 
                              title = "Select a folder to save fastq results"),
                 tags$hr(),
-                actionButton("ncct", "Enter NCCT project info")
+                actionButton("ncct", "Enter NCCT project info"),
+                tags$hr(),
+                checkboxInput("tower", "Use Nextflow Tower to monitor run", value = FALSE),
+                tags$hr()
               )
             ),
             
@@ -90,6 +92,10 @@
  #### server ####
   server <- function(input, output, session) {
     options(shiny.launch.browser = TRUE, shiny.error=recover)
+    
+    # reactives for optional nxf params
+    # set TOWER_ACCESS_TOKEN in ~/.Renviron
+    optional_params <- reactiveValues(mqc = "", tower = "")
     
     # update user counts at each server call
     isolate({
@@ -125,14 +131,49 @@
     })
     
     #----
+    # strategy for ncct modal and multiqc config file handling:
+    # if input$ncct_ok is clicked, the modal inputs are fed into the ncct_make_yaml() function, which generates
+    # a multiqc_config.yml file and saves it using tempfile()
+    # initially, the reactive value mqc_config$rv is set to "", if input$ncct_ok then it is set to
+    # c("--multiqc_config", mqc_config_temp) and this reactive is given as param to the nxf pipeline
+    
+    # observer to generate ncct modal
+    observeEvent(input$ncct, {
+      if(pingr::is_online()) {
+        ncct_modal_entries <- yaml::yaml.load_file("https://gist.githubusercontent.com/angelovangel/d079296b184eba5b124c1d434276fa28/raw/ncct_modal_entries")
+        showModal( ncct_modal(ncct_modal_entries) )
+      } else {
+        shinyalert("No internet!", 
+                   text = "This feature requires internet connection", 
+                   type = "warning")
+      }
+      
+    })
+    
+    # generate yml file in case OK of modal was pressed
+    # the yml file is generated in the app exec env, using temp()
+    observeEvent(input$ncct_ok, {
+      mqc_config_temp <- tempfile()
+      optional_params$mqc <- c("--multiqc_config", mqc_config_temp) 
+      ncct_make_yaml(customer = input$customer, 
+                     project_id = input$project_id, 
+                     ncct_contact = input$ncct_contact, 
+                     project_type = input$project_type, 
+                     lib_prep = input$lib_prep, 
+                     indexing = input$indexing, 
+                     seq_setup = input$seq_setup, 
+                     ymlfile = mqc_config_temp)
+      shinyalert(text = "Project info saved!", type = "info", timer = 1500, showConfirmButton = FALSE)
+      removeModal()
+    })
+    
+    
+    #----
     # generate random hashes for multiqc report temp file name etc.
     mqc_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     nxf_hash <- sprintf("%s_%s.html", as.integer(Sys.time()), digest::digest(runif(1)) )
     bcllog_hash <- sprintf("%s_%s.txt", as.integer(Sys.time()), digest::digest(runif(1)) )
     
-    # reactives for optional nxf params
-    # set TOWER_ACCESS_TOKEN in ~/.Renviron
-    optional_params <- reactiveValues(mqc = "", tower = "")
     
     # dir choose and file choose management --------------------------------------
     volumes <- c(Home = fs::path_home(), getVolumes()() )
@@ -208,35 +249,6 @@
        }
     })
     
-    #----
-    # strategy for ncct modal and multiqc config file handling:
-    # if input$ncct_ok is clicked, the modal inputs are fed into the ncct_make_yaml() function, which generates
-    # a multiqc_config.yml file and saves it using tempfile()
-    # initially, the reactive value mqc_config$rv is set to "", if input$ncct_ok then it is set to
-    # c("--multiqc_config", mqc_config_temp) and this reactive is given as param to the nxf pipeline
-    
-    # observer for ncct modal
-    source("ncct_modal.R", local = TRUE)$value
-    observeEvent(input$ncct, {
-      showModal(ncct_modal())
-    })
-    
-    # generate yml file in case OK of modal was pressed
-    # the yml file is generated in the app exec env, using temp()
-    observeEvent(input$ncct_ok, {
-      mqc_config_temp <- tempfile()
-      optional_params$mqc <- c("--multiqc_config", mqc_config_temp) 
-      ncct_make_yaml(customer = input$customer, 
-                     project_id = input$project_id, 
-                     ncct_contact = input$ncct_contact, 
-                     project_type = input$project_type, 
-                     lib_prep = input$lib_prep, 
-                     indexing = input$indexing, 
-                     seq_setup = input$seq_setup, 
-                     ymlfile = mqc_config_temp)
-      shinyalert(text = "Project info saved!", type = "info", timer = 1500, showConfirmButton = FALSE)
-      removeModal()
-    })
     
     
     #----
