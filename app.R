@@ -39,6 +39,12 @@
             useShinyjs(),
             useShinyalert(),
             useShinyFeedback(),
+            
+            # snackbars begin
+            snackbarWarning(id = "tower_snackbar", 
+                            message = "Is TOWER_ACCESS_TOKEN available in Sys.getenv() ?"),
+            # snackbars end
+            
             shiny::uiOutput("mqc_report_button", inline = TRUE),
             shiny::uiOutput("nxf_report_button", inline = TRUE),
             shiny::uiOutput("bcl_log_button", inline = TRUE),
@@ -46,37 +52,53 @@
             shiny::div(id = "commands_pannel", 
               shinyDirButton(id = "bcl_folder", 
                              label = "Select BCL run folder", 
-                             title = "Please select an Illumina run folder"),
+                             style = "color: #3498DB; font-weight: bold;", 
+                             #onMouseOver = "this.style.color = 'orange' ", 
+                             #onMouseOut = "this.style.color = '#3498DB' ", 
+                             title = "Please select an Illumina run folder", 
+                             icon = icon("folder-open")),
               
               actionButton("run", "Run nextflow-bcl pipeline", 
                          style = "color: #3498DB; font-weight: bold;", 
                          onMouseOver = "this.style.color = 'orange' ", 
-                         onMouseOut = "this.style.color = '#3498DB' "),
+                         onMouseOut = "this.style.color = '#3498DB' ", 
+                         icon = icon("play")),
               
               actionButton("reset", "Reset", 
                          style = "color: #3498DB; font-weight: bold;",
                          onMouseOver = "this.style.color = 'orange' ",
-                         onMouseOut = "this.style.color = '#3498DB' "),
-              # more options, like 
-              actionButton("more", "More options", class = "rightAlign"),
-              absolutePanel(top = 140, right = 20,
-                textInput(inputId = "report_title", 
+                         onMouseOut = "this.style.color = '#3498DB' ", 
+                         icon = icon("redo")),
+              actionButton("more", "More options", 
+                           class = "rightAlign", 
+                           icon = icon("cog")),
+              
+              actionButton("landing_page", "Go to home page", 
+                           icon = icon("home"),
+                           class = "rightAlign", 
+                           onclick ="window.open('http://google.com', '_blank')"),
+              
+              # more options
+              tags$div(id = "optional_inputs",
+                absolutePanel(top = 140, right = 20,
+                  textInput(inputId = "report_title", 
                           label = "Title of MultiQC report", 
                           value = "InterOp and bcl2fastq summary"),
-                tags$hr(),
-                shinyFilesButton(id = "samplesheet", 
+                  tags$hr(),
+                  shinyFilesButton(id = "samplesheet", 
                                  label = "Select sample sheet", 
                                  title = "Please select a sample sheet", 
                                  multiple = FALSE), 
-                tags$hr(),
-                shinyDirButton(id = "results_dir", 
+                  tags$hr(),
+                  shinyDirButton(id = "results_dir", 
                              label = "Custom results output folder", 
                              title = "Select a folder to save fastq results"),
-                tags$hr(),
-                actionButton("ncct", "Enter NCCT project info"),
-                tags$hr(),
-                checkboxInput("tower", "Use Nextflow Tower to monitor run", value = FALSE),
-                tags$hr()
+                  tags$hr(),
+                  actionButton("ncct", "Enter NCCT project info"),
+                  tags$hr(),
+                  checkboxInput("tower", "Use Nextflow Tower to monitor run", value = FALSE),
+                  tags$hr()
+                )
               )
             ),
             
@@ -107,27 +129,25 @@
       writeLines(as.character(users$count), con = "userlog")
     })
     
-    
     #----
     # observer for optional inputs
-    hide("report_title")
-    hide("samplesheet")
-    hide("results_dir")
-    hide("ncct")
-    hide("tower")
+    hide("optional_inputs")
     observeEvent(input$more, {
-      shinyjs::toggle("report_title")
-      shinyjs::toggle("samplesheet")
-      shinyjs::toggle("results_dir")
-      shinyjs::toggle("ncct")
-      shinyjs::toggle("tower")
+      shinyjs::toggle("optional_inputs")
     })
+    
     #----
     # observers for shinyFeedback
     observeEvent(input$report_title, {
       feedbackWarning(inputId = "report_title", 
                       condition = nchar(input$report_title) <= 5, 
                       text = "too short")
+    })
+    
+    observe({
+      if(input$tower) {
+        showSnackbar("tower_snackbar")
+      }
     })
     
     #----
