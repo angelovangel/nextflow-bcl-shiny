@@ -7,7 +7,7 @@
  library(shinyFiles)
  library(shinyjs)
  library(shinyalert)
- library(shinyFeedback)
+ #library(shinyFeedback)
  library(processx)
  library(stringr)
  library(digest)
@@ -41,9 +41,9 @@
             useShinyFeedback(),
             
             # snackbars begin
-            snackbarWarning(id = "tower_snackbar", 
-                            message = "Is TOWER_ACCESS_TOKEN available in Sys.getenv() ?"),
-            # snackbars end
+            # showToast(id = "tower_snackbar", 
+            #                 message = "Is TOWER_ACCESS_TOKEN available in Sys.getenv() ?"),
+            # # snackbars end
             
             shiny::uiOutput("mqc_report_button", inline = TRUE),
             shiny::uiOutput("nxf_report_button", inline = TRUE),
@@ -137,18 +137,18 @@
     })
     
     #----
-    # observers for shinyFeedback
-    observeEvent(input$report_title, {
-      feedbackWarning(inputId = "report_title", 
-                      condition = nchar(input$report_title) <= 5, 
-                      text = "too short")
-    })
+    # # observers for shinyFeedback
+    # observeEvent(input$report_title, {
+    #   feedbackWarning(inputId = "report_title", 
+    #                   condition = nchar(input$report_title) <= 5, 
+    #                   text = "too short")
+    # })
     
-    observe({
-      if(input$tower) {
-        showSnackbar("tower_snackbar")
-      }
-    })
+    # observe({
+    #   if(input$tower) {
+    #     showToast("tower_snackbar")
+    #   }
+    # })
     
     #----
     # strategy for ncct modal and multiqc config file handling:
