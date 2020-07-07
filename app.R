@@ -38,7 +38,7 @@
             includeCSS("css/custom.css"),
             useShinyjs(),
             useShinyalert(),
-            useShinyFeedback(),
+            #useShinyFeedback(),
             
             # snackbars begin
             # showToast(id = "tower_snackbar", 
