@@ -7,6 +7,7 @@
  library(shinyFiles)
  library(shinyjs)
  library(shinyalert)
+ library(shinypop)
  #library(shinyFeedback)
  library(processx)
  library(stringr)
@@ -38,6 +39,7 @@
             includeCSS("css/custom.css"),
             useShinyjs(),
             useShinyalert(),
+            use_notiflix_notify(position = "left-bottom", width = "380px"),
             #useShinyFeedback(),
             
             # snackbars begin
@@ -114,6 +116,13 @@
  #### server ####
   server <- function(input, output, session) {
     options(shiny.launch.browser = TRUE, shiny.error=recover)
+    options(shiny.launch.browser = TRUE, shiny.error=recover)
+    
+    ncores <- parallel::detectCores() # use for info only
+    
+    nx_notify_success(paste("Hello ", Sys.getenv("LOGNAME"), 
+                            "! There are ", ncores, " cores available.", sep = "")
+    )
     
     # reactives for optional nxf params
     # set TOWER_ACCESS_TOKEN in ~/.Renviron
@@ -183,7 +192,7 @@
                      indexing = input$indexing, 
                      seq_setup = input$seq_setup, 
                      ymlfile = mqc_config_temp)
-      shinyalert(text = "Project info saved!", type = "info", timer = 1500, showConfirmButton = FALSE)
+      nx_notify_success("Project info saved!")
       removeModal()
     })
     
@@ -289,7 +298,9 @@
         shinyjs::html(id = "stdout", 
                       "\nPlease make sure that Illumina run folder and sample sheet are selected, then press 'Run'...\n", 
                       add = TRUE)
+        nx_notify_warning("No Illumina run folder selected!")
       } else {
+        nx_notify_success("Looks good, starting pipeline...")
         # set stuff when run starts
         shinyjs::disable(id = "commands_pannel")
         shinyjs::disable(id = "bclButton")
@@ -336,9 +347,16 @@
         if(p$status == 0) {
           
           # clean work dir in case run finished ok
-          work_dir <- paste(wd, "/work", sep = "")
-          system2("rm", args = c("-rf", work_dir) )
-          cat("deleted", work_dir)
+          #work_dir <- paste(parseDirPath(volumes, input$csv_file), "/work", sep = "")
+          work_dir <- file.path(wd, "work")
+          rmwork <- system2("rm", args = c("-rf", work_dir))
+          
+          if(rmwork == 0) {
+            nx_notify_success(paste("Temp work directory deleted -", work_dir))
+            cat("deleted", work_dir, "\n")
+          } else {
+            nx_notify_warning("Could not delete temp work directory!")
+          }
           
           # copy mqc to www/ to be able to open it, also use hash to enable multiple concurrent users
           # make sure the nextflow-bcl pipeline writes to outdir
