@@ -87,17 +87,28 @@
                           label = "Title of MultiQC report", 
                           value = "InterOp and bcl2fastq summary"),
                   tags$hr(),
+                  
+                  selectizeInput("barcode_mismatch", 
+                                 label = "Number of allowed barcode mismatches", 
+                                 choices = c("perfect match only" = 0, "1 mismatch allowed" = 1,"2 mismatches allowed" = 2), 
+                                 selected = 1, 
+                                 multiple = FALSE),
+                  tags$hr(),
+                  
                   shinyFilesButton(id = "samplesheet", 
                                  label = "Select sample sheet", 
                                  title = "Please select a sample sheet", 
                                  multiple = FALSE), 
                   tags$hr(),
+                  
                   shinyDirButton(id = "results_dir", 
                              label = "Custom results output folder", 
                              title = "Select a folder to save fastq results"),
                   tags$hr(),
+                  
                   actionButton("ncct", "Enter NCCT project info"),
                   tags$hr(),
+                  
                   checkboxInput("tower", "Use Nextflow Tower to monitor run", value = FALSE),
                   tags$hr()
                 )
@@ -270,6 +281,7 @@
           "--runfolder", wd, "\\ \n",
           "--outdir", outdir, "\\ \n",
           "--samplesheet", sh_selected, "\\ \n",
+          "--barcode_mismatches", input$barcode_mismatch, "\\ \n",
           "--title", input$report_title, "\\ \n",
           "-with-report", paste(outdir, "/nxf_workflow_report.html", sep = ""), "\\ \n",
           optional_params$tower, optional_params$mqc, "\n"
@@ -323,6 +335,7 @@
                                "--runfolder", wd, 
                                "--outdir", outdir,
                                "--samplesheet", sh_selected, 
+                               "--barcode_mismatches", input$barcode_mismatch,
                                "--title", input$report_title, 
                                optional_params$mqc,  # here is the mqc_config trick - pass either "" or "--multiqc_config ..."
                                optional_params$tower, 
