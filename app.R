@@ -7,7 +7,7 @@
  library(shinyFiles)
  library(shinyjs)
  library(shinyalert)
- library(shinypop)
+ library(shinypop) #devtools::install_github("dreamRs/shinypop")
  #library(shinyFeedback)
  library(processx)
  library(stringr)
